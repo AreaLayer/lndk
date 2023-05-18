@@ -2,7 +2,8 @@ use bitcoincore_rpc::{bitcoin::Network, json, RpcApi};
 use bitcoind::{BitcoinD, Conf, ConnectParams};
 use flate2::read::GzDecoder;
 use std::env;
-use std::fs::create_dir_all;
+//use std::fs::create_dir_all;
+use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
 use std::thread;
 use tar::Archive;
@@ -92,7 +93,7 @@ impl LndNode {
 
         let lnd_dir_binding = Builder::new().prefix("lnd").tempdir().unwrap();
         let lnd_dir = lnd_dir_binding.path();
-        let _ = create_dir_all(lnd_dir.clone()).unwrap();
+        //create_dir_all(lnd_dir.clone()).unwrap();
 
         let cert_path = lnd_dir.join("tls.cert").to_str().unwrap().to_string();
 
@@ -119,12 +120,30 @@ impl LndNode {
             ),
         ];
 
-        let cmd = Command::new("lnd")
+        let mut cmd = Command::new("lnd")
             .args(args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .expect("Failed to execute lnd command");
+
+        {
+            let stdout = cmd.stdout.as_mut().unwrap();
+            let stdout_reader = BufReader::new(stdout);
+            let stdout_lines = stdout_reader.lines();
+
+            for line in stdout_lines {
+                println!("Read: {:?}", line);
+            }
+
+            let stderr = cmd.stderr.as_mut().unwrap();
+            let stderr_reader = BufReader::new(stderr);
+            let stderr_lines = stderr_reader.lines();
+
+            for line in stderr_lines {
+                println!("Read: {:?}", line);
+            }
+        }
 
         LndNode {
             address: format!("https://{}", rpc_addr),
